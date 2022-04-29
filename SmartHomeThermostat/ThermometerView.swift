@@ -21,6 +21,11 @@ struct ThermometerView: View {
 
   @State private var currentTemperature: CGFloat = 0
   @State private var degrees: CGFloat = 36
+  @State private var showStatus = false
+
+//  @State private var x: CGFloat = 0
+//  @State private var y: CGFloat = 0
+//  @State private var angle: CGFloat = 0
 
   var targetTemperature: CGFloat {
     return min(max(degrees / 360 * 40, minTemperature), maxTemperature)
@@ -39,6 +44,11 @@ struct ThermometerView: View {
       return .reaching
     }
   }
+
+  let timer = Timer
+    .publish(every: 1, on: .main, in: .common)
+    .autoconnect()
+
   var body: some View {
     ZStack {
       // MARK: Thermometer Scale
@@ -63,11 +73,14 @@ struct ThermometerView: View {
             .onChanged({ value in
               let x = min(max(value.location.x, 0), outerDialSize)
               let y = min(max(value.location.y, 0), outerDialSize)
+//              self.x = x
+//              self.y = y
 
               let endPoint = CGPoint(x: x, y: y)
               let centerPoint = CGPoint(x: outerDialSize / 2, y: outerDialSize / 2)
 
               let angle = calculateAngle(centerPoint: centerPoint, endPoint: endPoint)
+//              self.angle = angle
 
               if angle < 36 || angle > 270 { return }
 
@@ -76,11 +89,35 @@ struct ThermometerView: View {
         )
 
       // MARK: Thermometer Summary
-      ThermometerSummaryView(status: status, showStatus: true, temperature: currentTemperature)
+      ThermometerSummaryView(status: status, showStatus: showStatus, temperature: currentTemperature)
+
+//      VStack {
+//        Text("x: \(x), y: \(y)")
+//        Text("angle: \(angle.formatted())")
+//        Text("degrees: \(degrees.formatted())")
+//        Spacer()
+//      }
+//      .foregroundColor(.white)
     }
     .onAppear {
       currentTemperature = 22
       degrees = currentTemperature / 40 * 360
+    }
+    .onReceive(timer) { _ in
+      switch status {
+      case .heating:
+        showStatus = true
+        currentTemperature += 1
+      case .cooling:
+        showStatus = true
+        currentTemperature -= 1
+      case .reaching:
+        showStatus = false
+        break
+      }
+    }
+    .onDisappear {
+      timer.upstream.connect().cancel()
     }
     
   }
